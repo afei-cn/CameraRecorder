@@ -4,12 +4,77 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#eee"
     tools:context=".MainActivity">
 
-    <androidx.appcompat.widget.AppCompatButton
+    <TextView
+        android:id="@+id/camera_info_tv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:layout_marginTop="20dp"
+        android:text="Camera Settings"
+        android:textColor="@color/black"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <RelativeLayout
+        android:id="@+id/camera_id_layout"
+        style="@style/Theme.CameraRecorder.SettingsLayoutStyle"
+        android:layout_marginTop="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/camera_info_tv">
+
+        <TextView
+            style="@style/Theme.CameraRecorder.SettingsKeyTextStyle"
+            android:text="@string/settings_camera_id" />
+
+        <TextView
+            android:id="@+id/camera_id_tv"
+            style="@style/Theme.CameraRecorder.SettingsValueTextStyle" />
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/preview_size_layout"
+        style="@style/Theme.CameraRecorder.SettingsLayoutStyle"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/camera_id_layout">
+
+        <TextView
+            style="@style/Theme.CameraRecorder.SettingsKeyTextStyle"
+            android:text="@string/settings_preview_size" />
+
+        <TextView
+            android:id="@+id/preview_size_tv"
+            style="@style/Theme.CameraRecorder.SettingsValueTextStyle" />
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/picture_size_layout"
+        style="@style/Theme.CameraRecorder.SettingsLayoutStyle"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/preview_size_layout">
+
+        <TextView
+            style="@style/Theme.CameraRecorder.SettingsKeyTextStyle"
+            android:text="@string/settings_picture_size" />
+
+        <TextView
+            android:id="@+id/picture_size_tv"
+            style="@style/Theme.CameraRecorder.SettingsValueTextStyle" />
+    </RelativeLayout>
+
+    <Button
         android:id="@+id/open_camera_btn"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_margin="40dp"
         android:text="Open Camera"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintBottom_toBottomOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

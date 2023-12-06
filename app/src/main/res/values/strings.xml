@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">CameraRecorder</string>
+
+    <string name="settings_camera_id">Camera ID</string>
+    <string name="settings_preview_size">Preview Size</string>
+    <string name="settings_picture_size">Picture Size</string>
+    <string name="settings_cancel">Cancel</string>
 </resources>
