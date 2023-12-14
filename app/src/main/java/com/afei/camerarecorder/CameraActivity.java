@@ -30,6 +30,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
         mBinding.cameraView.setCameraModule(mCameraModule);
         mBinding.startRecorderIv.setOnClickListener(this::onClick);
         mBinding.stopRecorderIv.setOnClickListener(this::onClick);
+        mBinding.messageTv.setText("Video save path: /sdcard/DCIM/CameraRecorder");
     }
 
     @Override

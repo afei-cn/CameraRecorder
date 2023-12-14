@@ -55,7 +55,7 @@ public class CameraModule {
     private HandlerThread mCameraThread;
     private ReentrantLock mCameraStateLock = new ReentrantLock();
     private int mCameraState = CAMERA_STATE_CLOSE;
-    private int mDisplayRotation; // 原始Sensor画面顺时针旋转该角度后，画面朝上。(0, 90, 180, 270)
+    private int mDisplayRotation; // 原始画面顺时针旋转该角度(0, 90, 180, 270)后画面朝上，用于设置视频方向
 
     /* 录制相关*/
     private Surface mRecordSurface;
@@ -70,7 +70,7 @@ public class CameraModule {
         public void onOpened(@NonNull CameraDevice camera) {
             mCameraState = CAMERA_STATE_OPENED;
             mCameraDevice = camera;
-            createVideoSession();
+            createVideoSession();  // 相机打开后开始创建session
         }
 
         @Override
@@ -179,11 +179,11 @@ public class CameraModule {
     private void createVideoSession() {
         Log.v(TAG, "createVideoSession start...");
         try {
-            ArrayList<Surface> sessionSurfaces = new ArrayList<>();
-            sessionSurfaces.add(mPreviewSurface);
             // video surface
             mRecordSurface = MediaCodec.createPersistentInputSurface();
             mMediaRecorder = createRecorder();
+            ArrayList<Surface> sessionSurfaces = new ArrayList<>();
+            sessionSurfaces.add(mPreviewSurface);
             sessionSurfaces.add(mRecordSurface);
             createPreviewRequest();
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
@@ -244,7 +244,7 @@ public class CameraModule {
         @Override
         public void onConfigured(@NonNull CameraCaptureSession session) {
             mCameraSession = session;
-            startPreview();
+            startPreview();  // 开始预览
         }
 
         @Override
@@ -278,6 +278,7 @@ public class CameraModule {
                 tmpFile.delete();
             }
         } catch (IOException e) {
+            e.printStackTrace();
             Log.e(TAG, "createRecorder error: " + e.getMessage());
         }
         return mediaRecorder;
@@ -312,7 +313,8 @@ public class CameraModule {
     }
 
     private File getOutputFile() {
-        File saveDirectory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "CameraRecorder");
+        File saveDirectory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
+                "CameraRecorder");
         saveDirectory.mkdirs();
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
         String fileName = simpleDateFormat.format(new Date(System.currentTimeMillis())) + ".mp4";
@@ -369,13 +371,6 @@ public class CameraModule {
         mCameraStateLock.unlock();
     }
 
-    private void closeCameraSession() {
-        if (mCameraSession != null) {
-            mCameraSession.close();
-            mCameraSession = null;
-        }
-    }
-
     public void stopPreview() {
         Log.v(TAG, "stopPreview");
         if (mCameraSession == null) {
@@ -387,6 +382,13 @@ public class CameraModule {
             mCameraState = CAMERA_STATE_OPENED;
         } catch (CameraAccessException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void closeCameraSession() {
+        if (mCameraSession != null) {
+            mCameraSession.close();
+            mCameraSession = null;
         }
     }
 

@@ -2,10 +2,9 @@ package com.afei.camerarecorder.camera;
 
 import android.util.Size;
 
-import java.io.Serializable;
 import java.util.List;
 
-public class CameraConfig implements Serializable {
+public class CameraConfig {
 
     public static CameraConfig sCameraConfig;  // 一个全局的对象，方便不同Activity访问
     private String mCameraId;  // 摄像头id

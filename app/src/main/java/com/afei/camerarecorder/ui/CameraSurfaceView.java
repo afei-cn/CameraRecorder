@@ -1,6 +1,5 @@
 package com.afei.camerarecorder.ui;
 
-import android.app.Activity;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -12,8 +11,6 @@ import com.afei.camerarecorder.camera.CameraModule;
 public class CameraSurfaceView extends AutoFitSurfaceView {
 
     private static final String TAG = "CameraSurfaceView";
-
-    private Activity mContext;
 
     private CameraModule mCameraModule;
     private Size mPreviewSize;
@@ -28,7 +25,6 @@ public class CameraSurfaceView extends AutoFitSurfaceView {
     }
 
     private void init(Context context) {
-        mContext = (Activity) context;
         getHolder().addCallback(mSurfaceHolderCallback);
         setKeepScreenOn(true); // 设置屏幕常亮
     }

@@ -25,8 +25,6 @@ import android.view.SurfaceView;
  */
 public class AutoFitSurfaceView extends SurfaceView {
 
-    private static final String TAG = "AutoFitGLSurfaceView";
-
     private int mRatioWidth = 0;
     private int mRatioHeight = 0;
 

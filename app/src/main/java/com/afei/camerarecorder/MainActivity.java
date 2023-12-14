@@ -1,7 +1,6 @@
 package com.afei.camerarecorder;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -29,7 +28,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private final String TAG = getClass().getSimpleName();
     private static final int REQUEST_CODE = 200;
     private static final String[] PERMISSIONS = new String[]{
-            android.Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.RECORD_AUDIO,
             Manifest.permission.CAMERA
     };
 
