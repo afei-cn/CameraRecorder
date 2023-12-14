@@ -13,6 +13,9 @@ import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.OutputConfiguration;
 import android.hardware.camera2.params.SessionConfiguration;
+import android.media.MediaCodec;
+import android.media.MediaRecorder;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -22,40 +25,47 @@ import android.view.Surface;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 
+import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Date;
 import java.util.concurrent.Executor;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class CameraModule {
 
-    private static final String TAG = "CameraModule";
+    private final String TAG = "CameraModule";
     /* 相机状态 */
-    public static final int CAMERA_STATE_OPENING = 0x001;
-    public static final int CAMERA_STATE_OPENED = 0x002;
-    public static final int CAMERA_STATE_CLOSE = 0x003;
-    public static final int CAMERA_STATE_ERROR = 0x004;
-    public static final int CAMERA_STATE_PREVIEW = 0x005;
+    private final int CAMERA_STATE_OPENING = 0x001;
+    private final int CAMERA_STATE_OPENED = 0x002;
+    private final int CAMERA_STATE_CLOSE = 0x003;
+    private final int CAMERA_STATE_ERROR = 0x004;
+    private final int CAMERA_STATE_PREVIEW = 0x005;
 
     /* 相机通用*/
-    protected Activity mActivity;
-    protected CameraManager mCameraManager; // 相机管理者
-    protected CameraCharacteristics mCameraCharacteristics; // 相机属性
-    protected CameraDevice mCameraDevice; // 相机对象
-    protected CameraCaptureSession mCameraSession; // 相机事务
-    protected List<Surface> mOutputSurfaces;
-    protected Surface mPreviewSurface;  // 预览的Surface
-    protected CaptureRequest.Builder mRequestBuilder;
-    protected Handler mCameraHandler;
-    protected HandlerThread mCameraThread;
-    protected ReentrantLock mCameraStateLock = new ReentrantLock();
-    protected int mCameraState = CAMERA_STATE_CLOSE;
-    protected int mDisplayRotation; // 原始Sensor画面顺时针旋转该角度后，画面朝上。(0, 90, 180, 270)
+    private Activity mActivity;
+    private CameraManager mCameraManager; // 相机管理者
+    private CameraCharacteristics mCameraCharacteristics; // 相机属性
+    private CameraDevice mCameraDevice; // 相机对象
+    private CameraCaptureSession mCameraSession; // 相机事务
+    private Surface mPreviewSurface;  // 预览的Surface
+    private CaptureRequest.Builder mRequestBuilder;
+    private Handler mCameraHandler;
+    private HandlerThread mCameraThread;
+    private ReentrantLock mCameraStateLock = new ReentrantLock();
+    private int mCameraState = CAMERA_STATE_CLOSE;
+    private int mDisplayRotation; // 原始Sensor画面顺时针旋转该角度后，画面朝上。(0, 90, 180, 270)
 
-    protected CameraConfig mCameraConfig;
-    protected Size mPreviewSize;
+    /* 录制相关*/
+    private Surface mRecordSurface;
+    private MediaRecorder mMediaRecorder;
+    private boolean mIsRecording;  // 是否正在录制
 
-    protected CameraDevice.StateCallback mCameraOpenCallback = new CameraDevice.StateCallback() {
+    private CameraConfig mCameraConfig;
+    private Size mPreviewSize;
+
+    private CameraDevice.StateCallback mCameraOpenCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(@NonNull CameraDevice camera) {
             mCameraState = CAMERA_STATE_OPENED;
@@ -102,6 +112,10 @@ public class CameraModule {
             Log.e(TAG, "Open camera failed! No permission CAMERA.");
             return;
         }
+        if (mPreviewSurface == null) {
+            Log.e(TAG, "Open camera failed! No PreviewSurface");
+            return;
+        }
         mCameraStateLock.lock();
         String cameraId = mCameraConfig.getCameraId();
         Log.i(TAG, "openCamera --> cameraId: " + cameraId);
@@ -129,7 +143,7 @@ public class CameraModule {
         }
     }
 
-    protected void startBackgroundThread() {
+    private void startBackgroundThread() {
         if (mCameraThread == null || mCameraHandler == null) {
             Log.v(TAG, "startBackgroundThread");
             mCameraThread = new HandlerThread("CameraBackground");
@@ -138,7 +152,7 @@ public class CameraModule {
         }
     }
 
-    protected void initDisplayRotation(CameraCharacteristics cameraCharacteristics) {
+    private void initDisplayRotation(CameraCharacteristics cameraCharacteristics) {
         if (cameraCharacteristics == null || mActivity == null) {
             return;
         }
@@ -162,14 +176,19 @@ public class CameraModule {
         Log.d(TAG, "mDisplayRotation: " + mDisplayRotation);
     }
 
-    protected void createVideoSession() {
+    private void createVideoSession() {
         Log.v(TAG, "createVideoSession start...");
         try {
-            setUpSessionOutputs();
+            ArrayList<Surface> sessionSurfaces = new ArrayList<>();
+            sessionSurfaces.add(mPreviewSurface);
+            // video surface
+            mRecordSurface = MediaCodec.createPersistentInputSurface();
+            mMediaRecorder = createRecorder();
+            sessionSurfaces.add(mRecordSurface);
             createPreviewRequest();
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                 ArrayList<OutputConfiguration> outputConfigurations = new ArrayList<>();
-                for (Surface surface : mOutputSurfaces) {
+                for (Surface surface : sessionSurfaces) {
                     if (surface != null) {
                         OutputConfiguration configuration = new OutputConfiguration(surface);
                         outputConfigurations.add(configuration);
@@ -187,49 +206,41 @@ public class CameraModule {
 //                }
                 mCameraDevice.createCaptureSession(sessionConfiguration);
             } else {
-                mCameraDevice.createCaptureSession(mOutputSurfaces, mSessionCreateCallback, mCameraHandler);
+                mCameraDevice.createCaptureSession(sessionSurfaces, mSessionCreateCallback, mCameraHandler);
             }
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
     }
 
-    protected void setUpSessionOutputs() {
-        mOutputSurfaces = new ArrayList<>();
-        mOutputSurfaces.add(mPreviewSurface);
-    }
-
-    protected void createPreviewRequest() {
+    private void createPreviewRequest() {
         CaptureRequest.Builder builder;
         try {
-            builder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            builder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
         } catch (CameraAccessException e) {
             e.printStackTrace();
             Log.e(TAG, "setUpPreviewRequest, Camera access failed");
             return;
         }
-        for (Surface output : mOutputSurfaces) {
-            if (output != null) {
-                builder.addTarget(output);
-            }
-        }
+        builder.addTarget(mPreviewSurface);
+        builder.addTarget(mRecordSurface);
         applyCommonSettings(builder);
         mRequestBuilder = builder;
     }
 
-    protected void applyCommonSettings(CaptureRequest.Builder builder) {
+    private void applyCommonSettings(CaptureRequest.Builder builder) {
         if (builder == null) {
             return;
         }
         builder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
-        builder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_AUTO);  // 设置自动聚焦
-        builder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO); // 设置自动白平衡
-        builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH); // 设置自动曝光
+        builder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO);  // 设置聚焦
+        builder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO); // 设置白平衡
+        builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH); // 设置曝光
         // applyExposure(builder);
         // applyIso(builder);
     }
 
-    protected CameraCaptureSession.StateCallback mSessionCreateCallback = new CameraCaptureSession.StateCallback() {
+    private CameraCaptureSession.StateCallback mSessionCreateCallback = new CameraCaptureSession.StateCallback() {
         @Override
         public void onConfigured(@NonNull CameraCaptureSession session) {
             mCameraSession = session;
@@ -258,6 +269,90 @@ public class CameraModule {
         }
     }
 
+    private MediaRecorder createRecorder() {
+        MediaRecorder mediaRecorder = new MediaRecorder();
+        try {
+            File tmpFile = configRecorder(mediaRecorder);
+            if (tmpFile != null) {
+                // 创建后有个空的临时文件删除一下，虽然也可以在点击开始录制时依旧保存到这个文件中，但这样文件创建的时间信息可能会有较大差异
+                tmpFile.delete();
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "createRecorder error: " + e.getMessage());
+        }
+        return mediaRecorder;
+    }
+
+    private File configRecorder(@NonNull MediaRecorder mediaRecorder) throws IOException {
+        if (mediaRecorder == null) {
+            Log.e(TAG, "configRecorder failed! mediaRecorder is null");
+            return null;
+        }
+        mediaRecorder.reset();
+        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE); // 设置视频来源
+        mediaRecorder.setVideoEncodingBitRate(mPreviewSize.getWidth() * mPreviewSize.getHeight() * 8); // 设置比特率
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC); // 设置音频来源
+        mediaRecorder.setAudioEncodingBitRate(96000);  // 设置音频编码比特率（一般音乐和语音录制）
+        mediaRecorder.setAudioSamplingRate(44100);  // 设置音频采样率（CD音质）
+        mediaRecorder.setCaptureRate(30); // 捕获率
+        mediaRecorder.setOrientationHint(mDisplayRotation);  // 设置录制视频时的预期方向，取值为 0、90、180 或 270
+
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4); // 设置输出格式
+        mediaRecorder.setVideoSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());  // 设置视频宽高
+        mediaRecorder.setVideoFrameRate(30); // 设置帧数
+        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264); // 设置视频编码格式
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC); // 设置音频编码格式
+
+        mediaRecorder.setInputSurface(mRecordSurface);
+        File outputFile = getOutputFile();
+        mediaRecorder.setOutputFile(outputFile);
+        mediaRecorder.prepare();
+        mIsRecording = false;
+        return outputFile;
+    }
+
+    private File getOutputFile() {
+        File saveDirectory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "CameraRecorder");
+        saveDirectory.mkdirs();
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+        String fileName = simpleDateFormat.format(new Date(System.currentTimeMillis())) + ".mp4";
+        File outputFile = new File(saveDirectory, fileName);
+        return outputFile;
+    }
+
+    public void startRecorder() {
+        if (mCameraState != CAMERA_STATE_PREVIEW || mMediaRecorder == null) {
+            Log.e(TAG, "Start Recorder failed!");
+            return;
+        }
+        try {
+            configRecorder(mMediaRecorder);
+            mMediaRecorder.start();
+            mIsRecording = true;
+            Log.i(TAG, "startRecorder...");
+        } catch (IOException e) {
+            Log.e(TAG, "startRecorder failed! " + e.getMessage());
+        }
+    }
+
+    public void stopRecorder() {
+        if (mMediaRecorder != null && mIsRecording) {
+            Log.i(TAG, "stopRecorder...");
+            mMediaRecorder.stop();
+            mIsRecording = false;
+        }
+    }
+
+    private void releaseRecorder() {
+        if (mMediaRecorder == null) {
+            return;
+        }
+        stopRecorder();
+        mMediaRecorder.reset();
+        mMediaRecorder.release();
+        mMediaRecorder = null;
+    }
+
     public void releaseCamera() {
         if (mCameraState == CAMERA_STATE_CLOSE) {
             Log.w(TAG, "camera is closed");
@@ -265,16 +360,17 @@ public class CameraModule {
         }
         mCameraStateLock.lock();
         Log.v(TAG, "releaseCamera");
+        releaseRecorder();  // 如果正在录制，则先停止录制
+        stopPreview();
         closeCameraSession();
         closeCameraDevice();
-        stopBackgroundThread(); // 对应 openCamera() 方法中的 startBackgroundThread()
+        stopBackgroundThread(); // 对应 `startBackgroundThread()`
         mCameraState = CAMERA_STATE_CLOSE;
         mCameraStateLock.unlock();
     }
 
-    protected void closeCameraSession() {
+    private void closeCameraSession() {
         if (mCameraSession != null) {
-            stopPreview();
             mCameraSession.close();
             mCameraSession = null;
         }
@@ -294,14 +390,14 @@ public class CameraModule {
         }
     }
 
-    protected void closeCameraDevice() {
+    private void closeCameraDevice() {
         if (mCameraDevice != null) {
             mCameraDevice.close();
             mCameraDevice = null;
         }
     }
 
-    protected void stopBackgroundThread() {
+    private void stopBackgroundThread() {
         Log.v(TAG, "stopBackgroundThread");
         if (mCameraThread != null) {
             mCameraThread.quitSafely();
@@ -315,7 +411,7 @@ public class CameraModule {
         }
     }
 
-    protected class HandlerExecutor implements Executor {
+    private class HandlerExecutor implements Executor {
         private final Handler ihandler;
 
         public HandlerExecutor(Handler handler) {

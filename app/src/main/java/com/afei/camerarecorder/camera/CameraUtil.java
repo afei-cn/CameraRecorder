@@ -47,7 +47,6 @@ public class CameraUtil {
         return cameraConfigs;
     }
 
-
     public static Size chooseOptimalSize(Size[] sizes, int dstSize, float aspectRatio) {
         if (sizes == null || sizes.length == 0) {
             return null;
