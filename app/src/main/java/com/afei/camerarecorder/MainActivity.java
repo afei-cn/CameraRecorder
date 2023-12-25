@@ -20,6 +20,8 @@ import androidx.core.content.ContextCompat;
 import com.afei.camerarecorder.camera.CameraConfig;
 import com.afei.camerarecorder.camera.CameraUtil;
 import com.afei.camerarecorder.databinding.ActivityMainBinding;
+import com.afei.camerarecorder.normal.CameraActivity;
+import com.afei.camerarecorder.opengl.GLCameraActivity;
 
 import java.util.List;
 
@@ -51,6 +53,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void init() {
         checkPermission();
         mBinding.openCameraBtn.setOnClickListener(this::onClick);
+        mBinding.openGlCameraBtn.setOnClickListener(this::onClick);
         mBinding.cameraIdLayout.setOnClickListener(this::onClick);
         mBinding.previewSizeLayout.setOnClickListener(this::onClick);
         mBinding.pictureSizeLayout.setOnClickListener(this::onClick);
@@ -102,7 +105,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 dialog.dismiss();
             });
         } else if (v.getId() == R.id.open_camera_btn) {
-            startCameraActivity();
+            startCameraActivity(CameraActivity.class);
+        } else if (v.getId() == R.id.open_gl_camera_btn) {
+            startCameraActivity(GLCameraActivity.class);
         } else {
             Log.w(TAG, "unknown view id = " + v.getId());
         }
@@ -121,10 +126,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 .show();
     }
 
-    private void startCameraActivity() {
+    private void startCameraActivity(Class<?> cls) {
         if (checkPermission()) {
             CameraConfig.sCameraConfig = mCameraConfig;
-            Intent intent = new Intent(this, CameraActivity.class);
+            Intent intent = new Intent(this, cls);
             startActivity(intent);
         } else {
             Toast.makeText(this, "Missing permission!", Toast.LENGTH_SHORT).show();

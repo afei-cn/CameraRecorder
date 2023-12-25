@@ -14,25 +14,25 @@
  * limitations under the License.
  */
 
-package com.afei.camerarecorder.ui;
+package com.afei.camerarecorder.opengl;
 
 import android.content.Context;
+import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
-import android.view.SurfaceView;
 
 /**
- * A {@link SurfaceView} that can be adjusted to a specified aspect ratio.
+ * A {@link GLSurfaceView} that can be adjusted to a specified aspect ratio.
  */
-public class AutoFitSurfaceView extends SurfaceView {
+public class AutoFitGLSurfaceView extends GLSurfaceView {
 
     private int mRatioWidth = 0;
     private int mRatioHeight = 0;
 
-    public AutoFitSurfaceView(Context context) {
+    public AutoFitGLSurfaceView(Context context) {
         this(context, null);
     }
 
-    public AutoFitSurfaceView(Context context, AttributeSet attrs) {
+    public AutoFitGLSurfaceView(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
 

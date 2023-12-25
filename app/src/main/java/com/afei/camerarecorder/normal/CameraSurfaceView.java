@@ -1,4 +1,4 @@
-package com.afei.camerarecorder.ui;
+package com.afei.camerarecorder.normal;
 
 import android.content.Context;
 import android.util.AttributeSet;
@@ -26,7 +26,7 @@ public class CameraSurfaceView extends AutoFitSurfaceView {
 
     private void init(Context context) {
         getHolder().addCallback(mSurfaceHolderCallback);
-        setKeepScreenOn(true); // 设置屏幕常亮
+        setKeepScreenOn(true);
     }
 
     public void setCameraModule(CameraModule cameraModule) {

@@ -76,5 +76,13 @@
         android:layout_height="wrap_content"
         android:layout_margin="40dp"
         android:text="Open Camera"
+        app:layout_constraintBottom_toTopOf="@+id/open_gl_camera_btn" />
+
+    <Button
+        android:id="@+id/open_gl_camera_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="40dp"
+        android:text="Open GL Camera"
         app:layout_constraintBottom_toBottomOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

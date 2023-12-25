@@ -28,7 +28,11 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".CameraActivity"
+            android:name=".normal.CameraActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".opengl.GLCameraActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
     </application>

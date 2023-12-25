@@ -1,4 +1,4 @@
-package com.afei.camerarecorder;
+package com.afei.camerarecorder.normal;
 
 import android.os.Bundle;
 import android.util.Log;
@@ -6,6 +6,7 @@ import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.afei.camerarecorder.R;
 import com.afei.camerarecorder.camera.CameraConfig;
 import com.afei.camerarecorder.camera.CameraModule;
 import com.afei.camerarecorder.databinding.ActivityCameraBinding;

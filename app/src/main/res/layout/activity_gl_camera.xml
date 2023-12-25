@@ -5,9 +5,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/black"
-    tools:context=".normal.CameraActivity">
+    tools:context=".opengl.GLCameraActivity">
 
-    <com.afei.camerarecorder.normal.CameraSurfaceView
+    <com.afei.camerarecorder.opengl.CameraGLSurfaceView
         android:id="@+id/camera_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

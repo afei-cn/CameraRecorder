@@ -6,13 +6,14 @@ import java.util.List;
 
 public class CameraConfig {
 
-    public static CameraConfig sCameraConfig;  // 一个全局的对象，方便不同Activity访问
-    private String mCameraId;  // 摄像头id
-    private Size mPreviewSize;  // 预览分辨率
-    private Size mPictureSize;  // 拍照分辨率
-    private float mExposure;  // 曝光
-    private List<Size> mPreviewSizes;  // 支持的所有预览分辨率
-    private List<Size> mPictureSizes;  // 支持的所有拍照分辨率
+    public static CameraConfig sCameraConfig;  // global for all Activity access
+
+    private String mCameraId;
+    private Size mPreviewSize;
+    private Size mPictureSize;
+    private float mExposure;
+    private List<Size> mPreviewSizes;  // all support preview size
+    private List<Size> mPictureSizes;  // all support picture size
 
     public static CameraConfig createDefault() {
         return new Builder().build();

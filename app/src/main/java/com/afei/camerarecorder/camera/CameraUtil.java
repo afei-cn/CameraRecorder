@@ -26,8 +26,9 @@ public class CameraUtil {
                 StreamConfigurationMap map = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
                 Size[] previewSizes = map.getOutputSizes(SurfaceTexture.class);
                 Size[] pictureSizes = map.getOutputSizes(ImageFormat.JPEG);
-                Size previewSize = chooseOptimalSize(previewSizes, 1080, 0.75f);
-                Size pictureSize = chooseOptimalSize(pictureSizes, 1080, 0.75f);
+                float[] ratios = {3.0f / 4.0f, 9.0f / 16.0f};  // limit size is 4:3 or 16:9
+                Size previewSize = chooseOptimalSize(previewSizes, 1080, ratios);
+                Size pictureSize = chooseOptimalSize(pictureSizes, 1080, ratios);
                 CameraConfig cameraConfig =
                         new CameraConfig.Builder().setCameraId(cameraId).setPreviewSizes(Arrays.asList(previewSizes)).setPreviewSize(previewSize).setPictureSizes(Arrays.asList(pictureSizes)).setPictureSize(pictureSize).build();
                 cameraConfigs.add(cameraConfig);
@@ -38,23 +39,24 @@ public class CameraUtil {
         return cameraConfigs;
     }
 
-    public static Size chooseOptimalSize(Size[] sizes, int dstSize, float aspectRatio) {
+    public static Size chooseOptimalSize(Size[] sizes, int dstSize, float[] ratios) {
         if (sizes == null || sizes.length == 0) {
             return null;
         }
-        int minDelta = Integer.MAX_VALUE; // 最小的差值，初始值应该设置大点保证之后的计算中会被重置
-        int index = 0; // 最小的差值对应的索引坐标
+        int minDelta = Integer.MAX_VALUE;
+        int index = 0;
         for (int i = 0; i < sizes.length; i++) {
             Size size = sizes[i];
-            // 先判断比例是否相等
-            if (size.getWidth() * aspectRatio == size.getHeight()) {
-                int delta = Math.abs(dstSize - size.getHeight());
-                if (delta == 0) {
-                    return size;
-                }
-                if (minDelta > delta) {
-                    minDelta = delta;
-                    index = i;
+            for (float ratio : ratios) {
+                if (size.getWidth() * ratio == size.getHeight()) {
+                    int delta = Math.abs(dstSize - size.getHeight());
+                    if (delta == 0) {
+                        return size;
+                    }
+                    if (minDelta > delta) {
+                        minDelta = delta;
+                        index = i;
+                    }
                 }
             }
         }

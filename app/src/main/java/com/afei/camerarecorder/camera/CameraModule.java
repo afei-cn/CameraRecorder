@@ -35,32 +35,36 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class CameraModule {
 
-    private final String TAG = "CameraModule";
-    /* 相机状态 */
+    private final String TAG = getClass().getSimpleName();
+    /* camera state */
     private final int CAMERA_STATE_OPENING = 0x001;
     private final int CAMERA_STATE_OPENED = 0x002;
     private final int CAMERA_STATE_CLOSE = 0x003;
     private final int CAMERA_STATE_ERROR = 0x004;
     private final int CAMERA_STATE_PREVIEW = 0x005;
 
-    /* 相机通用*/
+    /* common */
     private Activity mActivity;
-    private CameraManager mCameraManager; // 相机管理者
-    private CameraCharacteristics mCameraCharacteristics; // 相机属性
-    private CameraDevice mCameraDevice; // 相机对象
-    private CameraCaptureSession mCameraSession; // 相机事务
-    private Surface mPreviewSurface;  // 预览的Surface
+    private CameraManager mCameraManager;
+    private CameraCharacteristics mCameraCharacteristics;
+    private CameraDevice mCameraDevice;
+    private CameraCaptureSession mCameraSession;
+    private Surface mPreviewSurface;  // the surface for display
     private CaptureRequest.Builder mRequestBuilder;
     private Handler mCameraHandler;
     private HandlerThread mCameraThread;
     private ReentrantLock mCameraStateLock = new ReentrantLock();
     private int mCameraState = CAMERA_STATE_CLOSE;
-    private int mDisplayRotation; // 原始画面顺时针旋转该角度(0, 90, 180, 270)后画面朝上，用于设置视频方向
+
+    // Clockwise angle through which the output image needs to be rotated to be upright on the device screen.
+    // Range of valid values: 0, 90, 180, 270
+    // for set video orientation
+    private int mDisplayRotation;
 
     /* 录制相关*/
     private Surface mRecordSurface;
     private MediaRecorder mMediaRecorder;
-    private boolean mIsRecording;  // 是否正在录制
+    private boolean mIsRecording;
 
     private CameraConfig mCameraConfig;
     private Size mPreviewSize;
@@ -70,7 +74,7 @@ public class CameraModule {
         public void onOpened(@NonNull CameraDevice camera) {
             mCameraState = CAMERA_STATE_OPENED;
             mCameraDevice = camera;
-            createVideoSession();  // 相机打开后开始创建session
+            createVideoSession();  // create session after open camera
         }
 
         @Override
@@ -233,9 +237,9 @@ public class CameraModule {
             return;
         }
         builder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
-        builder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO);  // 设置聚焦
-        builder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO); // 设置白平衡
-        builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH); // 设置曝光
+        builder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO);  // set auto focus mode
+        builder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO); // set auto white balance mode
+        builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH); // set auto exposure mode
         // applyExposure(builder);
         // applyIso(builder);
     }
@@ -244,7 +248,7 @@ public class CameraModule {
         @Override
         public void onConfigured(@NonNull CameraCaptureSession session) {
             mCameraSession = session;
-            startPreview();  // 开始预览
+            startPreview();
         }
 
         @Override
@@ -260,7 +264,6 @@ public class CameraModule {
             return;
         }
         try {
-            // 开始预览，即一直发送预览的请求
             CaptureRequest captureRequest = mRequestBuilder.build();
             mCameraSession.setRepeatingRequest(captureRequest, null, mCameraHandler);
             mCameraState = CAMERA_STATE_PREVIEW;
@@ -274,7 +277,8 @@ public class CameraModule {
         try {
             File tmpFile = configRecorder(mediaRecorder);
             if (tmpFile != null) {
-                // 创建后有个空的临时文件删除一下，虽然也可以在点击开始录制时依旧保存到这个文件中，但这样文件创建的时间信息可能会有较大差异
+                // we will create new file when click record button.
+                // so need delete this temporary file
                 tmpFile.delete();
             }
         } catch (IOException e) {
@@ -290,20 +294,32 @@ public class CameraModule {
             return null;
         }
         mediaRecorder.reset();
-        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE); // 设置视频来源
-        mediaRecorder.setVideoEncodingBitRate(mPreviewSize.getWidth() * mPreviewSize.getHeight() * 8); // 设置比特率
-        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC); // 设置音频来源
-        mediaRecorder.setAudioEncodingBitRate(96000);  // 设置音频编码比特率（一般音乐和语音录制）
-        mediaRecorder.setAudioSamplingRate(44100);  // 设置音频采样率（CD音质）
-        mediaRecorder.setCaptureRate(30); // 捕获率
-        mediaRecorder.setOrientationHint(mDisplayRotation);  // 设置录制视频时的预期方向，取值为 0、90、180 或 270
+        // Sets the video source to be used for recording
+        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+        // Sets the video encoding bit rate for recording
+        mediaRecorder.setVideoEncodingBitRate(mPreviewSize.getWidth() * mPreviewSize.getHeight() * 8);
+        // Sets the audio source to be used for recording
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        // Sets the audio encoding bit rate for recording
+        mediaRecorder.setAudioEncodingBitRate(96000);
+        // Sets the audio sampling rate for recording
+        mediaRecorder.setAudioSamplingRate(44100);
+        // Set video frame capture rate
+        mediaRecorder.setCaptureRate(30);
+        // Sets the orientation hint for output video playback. Values: 0, 90, 180, 270
+        mediaRecorder.setOrientationHint(mDisplayRotation);
 
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4); // 设置输出格式
-        mediaRecorder.setVideoSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());  // 设置视频宽高
-        mediaRecorder.setVideoFrameRate(30); // 设置帧数
-        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264); // 设置视频编码格式
-        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC); // 设置音频编码格式
-
+        // Sets the format of the output file produced during recording
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        // Sets the width and height of the video to be captured
+        mediaRecorder.setVideoSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+        // Sets the frame rate of the video to be captured
+        mediaRecorder.setVideoFrameRate(30);
+        // Sets the video encoder to be used for recording
+        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+        // Sets the audio encoder to be used for recording
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        // a persistent input surface created by MediaCodec.createPersistentInputSurface()
         mediaRecorder.setInputSurface(mRecordSurface);
         File outputFile = getOutputFile();
         mediaRecorder.setOutputFile(outputFile);
@@ -337,6 +353,11 @@ public class CameraModule {
         }
     }
 
+    public boolean isFrontCamera() {
+        int cameraId = Integer.parseInt(mCameraConfig.getCameraId());
+        return cameraId == CameraMetadata.LENS_FACING_BACK;
+    }
+
     public void stopRecorder() {
         if (mMediaRecorder != null && mIsRecording) {
             Log.i(TAG, "stopRecorder...");
@@ -349,7 +370,7 @@ public class CameraModule {
         if (mMediaRecorder == null) {
             return;
         }
-        stopRecorder();
+        stopRecorder();  // stop if is recording
         mMediaRecorder.reset();
         mMediaRecorder.release();
         mMediaRecorder = null;
@@ -362,11 +383,11 @@ public class CameraModule {
         }
         mCameraStateLock.lock();
         Log.v(TAG, "releaseCamera");
-        releaseRecorder();  // 如果正在录制，则先停止录制
+        releaseRecorder();
         stopPreview();
         closeCameraSession();
         closeCameraDevice();
-        stopBackgroundThread(); // 对应 `startBackgroundThread()`
+        stopBackgroundThread();
         mCameraState = CAMERA_STATE_CLOSE;
         mCameraStateLock.unlock();
     }
